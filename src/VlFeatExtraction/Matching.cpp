@@ -119,7 +119,12 @@ void VlFeatExtraction::FindBestMatches(const Eigen::MatrixXi& dists, const float
   }
 }
 
-void VlFeatExtraction::MatchSiftFeaturesCPU(const SiftMatchingOptions& match_options, const FeatureDescriptors& descriptors1, const FeatureDescriptors& descriptors2, FeatureMatches* matches) {
+void VlFeatExtraction::MatchSiftFeaturesCPU(
+  const SiftMatchingOptions& match_options, 
+  const FeatureDescriptors& descriptors1,
+  const FeatureDescriptors& descriptors2,
+  FeatureMatches* matches,
+  const bool sort_matches_by_score) {
   //CHECK(match_options.Check());
   //CHECK_NOTNULL(matches);
 
@@ -128,4 +133,13 @@ void VlFeatExtraction::MatchSiftFeaturesCPU(const SiftMatchingOptions& match_opt
 
   FindBestMatches(dists, match_options.max_ratio, match_options.max_distance,
     match_options.cross_check, matches);
+
+  // optionally, sort matches by matching score (useful for PROSAC and the like)
+  if (sort_matches_by_score) {
+    std::sort(
+      matches->begin(), matches->end(),
+      [](const FeatureMatch& match1, const FeatureMatch& match2) {
+        return match1.score > match2.score;
+      });
+  }
 }

@@ -33,6 +33,7 @@ namespace VlFeatExtraction {
   void MatchSiftFeaturesCPU(const SiftMatchingOptions& match_options,
     const FeatureDescriptors& descriptors1,
     const FeatureDescriptors& descriptors2,
-    FeatureMatches* matches);
+    FeatureMatches* matches,
+    const bool sort_matches_by_score = true);
 
 }
