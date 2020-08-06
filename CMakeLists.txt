@@ -12,6 +12,7 @@ if(IS_MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
 endif()
 
+option(BUILD_EXAMPLES "Whether to enable CMAKE generation of example projects" OFF)
 option(SIMD_ENABLED "Whether to enable SIMD optimizations" ON)
 option(OPENMP_ENABLED "Whether to enable OpenMP parallelization" ON)
 option(IPO_ENABLED "Whether to enable interprocedural optimization" ON)
@@ -73,26 +74,33 @@ target_link_libraries(VlFeatExtraction
 	vlfeat
 	${OpenCV_LIBS}
 )
-add_dependencies(VlFeatExtraction vlfeat)
-
-###############################################################################
-# bencsmark ###################################################################
-###############################################################################
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
-
-file(GLOB HDRS include/*.h include/*.hpp)
-file(GLOB SRCS src/*.cpp)
-
-###############################################################################
-add_executable(bencsmark 
-	${HDRS} src/main.cpp
+add_dependencies(VlFeatExtraction 
+  vlfeat
 )
-target_link_libraries(bencsmark 
-	Eigen3::Eigen 
-	vlfeat
-	${OpenCV_LIBS}
-  VlFeatExtraction
-)
-add_dependencies(bencsmark VlFeatExtraction)
 
+###############################################################################
+# Example projects ############################################################
+###############################################################################
+if(BUILD_EXAMPLES)
+  message(STATUS "Enabling CMAKE generation of example projects")
+  
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+
+  file(GLOB HDRS include/*.h include/*.hpp)
+  file(GLOB SRCS src/*.cpp)
+
+  ###############################################################################
+  add_executable(Example_ExtractAndMatch_TwoView
+    ${HDRS} src/main.cpp
+  )
+  target_link_libraries(Example_ExtractAndMatch_TwoView 
+    Eigen3::Eigen 
+    vlfeat
+    ${OpenCV_LIBS}
+    VlFeatExtraction
+  )
+  add_dependencies(Example_ExtractAndMatch_TwoView 
+    VlFeatExtraction
+  )
+endif()
 
