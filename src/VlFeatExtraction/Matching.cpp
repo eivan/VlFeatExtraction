@@ -36,7 +36,12 @@
 #include <array>
 #include <iostream>
 
-Eigen::MatrixXi VlFeatExtraction::ComputeSiftDistanceMatrix(const FeatureKeypoints* keypoints1, const FeatureKeypoints* keypoints2, const FeatureDescriptors& descriptors1, const FeatureDescriptors& descriptors2, const std::function<bool(float, float, float, float)>& guided_filter) {
+Eigen::MatrixXi VlFeatExtraction::ComputeSiftDistanceMatrix(
+  const FeatureKeypoints* keypoints1, 
+  const FeatureKeypoints* keypoints2, 
+  const FeatureDescriptors& descriptors1, 
+  const FeatureDescriptors& descriptors2,
+  const std::function<bool(float, float, float, float)>& guided_filter) {
   if (guided_filter != nullptr) {
     assert(keypoints1);
     assert(keypoints2);
@@ -44,25 +49,36 @@ Eigen::MatrixXi VlFeatExtraction::ComputeSiftDistanceMatrix(const FeatureKeypoin
     assert(keypoints2->size() == descriptors2.rows());
   }
 
-  const Eigen::Matrix<int, Eigen::Dynamic, 128> descriptors1_int =
-    descriptors1.cast<int>();
-  const Eigen::Matrix<int, Eigen::Dynamic, 128> descriptors2_int =
-    descriptors2.cast<int>();
 
   Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> dists(
     descriptors1.rows(), descriptors2.rows());
 
-  for (FeatureDescriptors::Index i1 = 0; i1 < descriptors1.rows(); ++i1) {
-    for (FeatureDescriptors::Index i2 = 0; i2 < descriptors2.rows(); ++i2) {
-      if (guided_filter != nullptr &&
-        guided_filter((*keypoints1)[i1].x, (*keypoints1)[i1].y,
-          (*keypoints2)[i2].x, (*keypoints2)[i2].y)) {
-        dists(i1, i2) = 0;
-      }
-      else {
-        dists(i1, i2) = descriptors1_int.row(i1).dot(descriptors2_int.row(i2));
+  if (guided_filter != nullptr) {
+    // TODO: should this be removed and in stead used in dot product?
+    const Eigen::Matrix<int, Eigen::Dynamic, 128> descriptors1_int =
+      descriptors1.cast<int>();
+    const Eigen::Matrix<int, Eigen::Dynamic, 128> descriptors2_int =
+      descriptors2.cast<int>();
+
+    for (FeatureDescriptors::Index i1 = 0; i1 < descriptors1.rows(); ++i1) {
+      for (FeatureDescriptors::Index i2 = 0; i2 < descriptors2.rows(); ++i2) {
+        if (guided_filter((*keypoints1)[i1].x, (*keypoints1)[i1].y,
+            (*keypoints2)[i2].x, (*keypoints2)[i2].y)) {
+          dists(i1, i2) = 0;
+        }
+        else {
+          dists(i1, i2) = descriptors1_int.row(i1).dot(descriptors2_int.row(i2));
+        }
       }
     }
+  }
+  else {
+    for (FeatureDescriptors::Index i1 = 0; i1 < descriptors1.rows(); ++i1) {
+      for (FeatureDescriptors::Index i2 = 0; i2 < descriptors2.rows(); ++i2) {
+        //dists(i1, i2) = descriptors1_int.row(i1).dot(descriptors2_int.row(i2));
+      }
+    }
+    dists = descriptors1.cast<int>() * descriptors2.cast<int>().transpose();
   }
 
   return dists;
