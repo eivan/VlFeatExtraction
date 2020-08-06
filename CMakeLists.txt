@@ -25,7 +25,6 @@ endif()
 
 #find_package( VLFeat REQUIRED )
 find_package( Eigen3 3.3.7 REQUIRED )
-find_package( OpenCV REQUIRED )
 
 if(OPENMP_ENABLED AND OPENMP_FOUND)
     message(STATUS "Enabling OpenMP support")
@@ -83,8 +82,9 @@ add_dependencies(VlFeatExtraction
 ###############################################################################
 if(BUILD_EXAMPLES)
   message(STATUS "Enabling CMAKE generation of example projects")
-  
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
+  
+  find_package( OpenCV REQUIRED )
 
   file(GLOB HDRS include/*.h include/*.hpp)
   file(GLOB SRCS src/*.cpp)
