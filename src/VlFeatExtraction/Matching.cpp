@@ -36,12 +36,47 @@
 #include <array>
 #include <iostream>
 
+using MatrixXi_RM = Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+
+namespace VlFeatExtraction {
+  Eigen::MatrixXi ComputeSiftDistanceMatrix(
+    const FeatureKeypoints* keypoints1, const FeatureKeypoints* keypoints2,
+    const FeatureDescriptors& descriptors1,
+    const FeatureDescriptors& descriptors2,
+    const std::function<bool(float, float, float, float)>& guided_filter);
+
+  size_t FindBestMatchesOneWayBruteForce(const Eigen::MatrixXi& dists,
+    const float max_ratio, const float max_distance,
+    std::vector<int>* matches);
+  void FindBestMatchesBruteForce(const Eigen::MatrixXi& dists, const float max_ratio,
+    const float max_distance, const bool cross_check,
+    FeatureMatches* matches);
+
+  void FindBestMatchesOneWayFLANN(
+    const FeatureDescriptors& query, const FeatureDescriptors& database,
+    MatrixXi_RM* indices,
+    MatrixXi_RM* distances);
+  size_t FindBestMatchesOneWayFLANN(
+    const MatrixXi_RM& indices,
+    const MatrixXi_RM& distances,
+    const float max_ratio, const float max_distance,
+    std::vector<int>* matches);
+  void FindBestMatchesFLANN(
+    const MatrixXi_RM& indices_1to2,
+    const MatrixXi_RM& distances_1to2,
+    const MatrixXi_RM& indices_2to1,
+    const MatrixXi_RM& distances_2to1,
+    const float max_ratio, const float max_distance, const bool cross_check,
+    FeatureMatches* matches);
+}
+
 Eigen::MatrixXi VlFeatExtraction::ComputeSiftDistanceMatrix(
-  const FeatureKeypoints* keypoints1, 
-  const FeatureKeypoints* keypoints2, 
-  const FeatureDescriptors& descriptors1, 
+  const FeatureKeypoints* keypoints1,
+  const FeatureKeypoints* keypoints2,
+  const FeatureDescriptors& descriptors1,
   const FeatureDescriptors& descriptors2,
   const std::function<bool(float, float, float, float)>& guided_filter) {
+
   if (guided_filter != nullptr) {
     assert(keypoints1);
     assert(keypoints2);
@@ -49,12 +84,11 @@ Eigen::MatrixXi VlFeatExtraction::ComputeSiftDistanceMatrix(
     assert(keypoints2->size() == descriptors2.rows());
   }
 
-
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> dists(
-    descriptors1.rows(), descriptors2.rows());
-
   if (guided_filter != nullptr) {
-    // TODO: should this be removed and in stead used in dot product?
+    MatrixXi_RM dists(
+      descriptors1.rows(), descriptors2.rows());
+
+    // TODO: should these casts here be removed and in stead used in dot product?
     const Eigen::Matrix<int, Eigen::Dynamic, 128> descriptors1_int =
       descriptors1.cast<int>();
     const Eigen::Matrix<int, Eigen::Dynamic, 128> descriptors2_int =
@@ -63,7 +97,7 @@ Eigen::MatrixXi VlFeatExtraction::ComputeSiftDistanceMatrix(
     for (FeatureDescriptors::Index i1 = 0; i1 < descriptors1.rows(); ++i1) {
       for (FeatureDescriptors::Index i2 = 0; i2 < descriptors2.rows(); ++i2) {
         if (guided_filter((*keypoints1)[i1].x, (*keypoints1)[i1].y,
-            (*keypoints2)[i2].x, (*keypoints2)[i2].y)) {
+          (*keypoints2)[i2].x, (*keypoints2)[i2].y)) {
           dists(i1, i2) = 0;
         }
         else {
@@ -71,17 +105,11 @@ Eigen::MatrixXi VlFeatExtraction::ComputeSiftDistanceMatrix(
         }
       }
     }
+    return dists;
   }
   else {
-    for (FeatureDescriptors::Index i1 = 0; i1 < descriptors1.rows(); ++i1) {
-      for (FeatureDescriptors::Index i2 = 0; i2 < descriptors2.rows(); ++i2) {
-        //dists(i1, i2) = descriptors1_int.row(i1).dot(descriptors2_int.row(i2));
-      }
-    }
-    dists = descriptors1.cast<int>() * descriptors2.cast<int>().transpose();
+    return descriptors1.cast<int>() * descriptors2.cast<int>().transpose();
   }
-
-  return dists;
 }
 
 size_t VlFeatExtraction::FindBestMatchesOneWayBruteForce(const Eigen::MatrixXi& dists, const float max_ratio, const float max_distance, std::vector<int>* matches) {
@@ -151,10 +179,8 @@ void VlFeatExtraction::FindBestMatchesBruteForce(const Eigen::MatrixXi& dists, c
     for (size_t i1 = 0; i1 < matches12.size(); ++i1) {
       if (matches12[i1] != -1 && matches21[matches12[i1]] != -1 &&
         matches21[matches12[i1]] == static_cast<int>(i1)) {
-        FeatureMatch match;
-        match.point2D_idx1 = i1;
-        match.point2D_idx2 = matches12[i1];
-        matches->push_back(match);
+        matches->emplace_back(i1, matches12[i1],
+          dists(i1, matches12[i1]));
       }
     }
   }
@@ -162,10 +188,7 @@ void VlFeatExtraction::FindBestMatchesBruteForce(const Eigen::MatrixXi& dists, c
     matches->reserve(num_matches12);
     for (size_t i1 = 0; i1 < matches12.size(); ++i1) {
       if (matches12[i1] != -1) {
-        FeatureMatch match;
-        match.point2D_idx1 = i1;
-        match.point2D_idx2 = matches12[i1];
-        matches->push_back(match);
+        matches->emplace_back(i1, matches12[i1], dists(i1, matches12[i1]));
       }
     }
   }
@@ -195,9 +218,9 @@ struct metric_L2_intDIST : public nanoflann::Metric {
 
 void VlFeatExtraction::FindBestMatchesOneWayFLANN(
   const FeatureDescriptors& query, const FeatureDescriptors& database,
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>*
+  MatrixXi_RM*
   indices,
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>*
+  MatrixXi_RM*
   distances) {
 
   std::cout << "rows: " << query.rows() << std::endl;
@@ -246,9 +269,9 @@ void VlFeatExtraction::FindBestMatchesOneWayFLANN(
 }
 
 size_t VlFeatExtraction::FindBestMatchesOneWayFLANN(
-  const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
+  const MatrixXi_RM&
   indices,
-  const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
+  const MatrixXi_RM&
   distances,
   const float max_ratio, const float max_distance,
   std::vector<int>* matches) {
@@ -305,13 +328,13 @@ size_t VlFeatExtraction::FindBestMatchesOneWayFLANN(
 }
 
 void VlFeatExtraction::FindBestMatchesFLANN(
-  const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
+  const MatrixXi_RM&
   indices_1to2,
-  const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
+  const MatrixXi_RM&
   distances_1to2,
-  const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
+  const MatrixXi_RM&
   indices_2to1,
-  const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
+  const MatrixXi_RM&
   distances_2to1,
   const float max_ratio, const float max_distance, const bool cross_check,
   FeatureMatches* matches) {
@@ -329,10 +352,9 @@ void VlFeatExtraction::FindBestMatchesFLANN(
     for (size_t i1 = 0; i1 < matches12.size(); ++i1) {
       if (matches12[i1] != -1 && matches21[matches12[i1]] != -1 &&
         matches21[matches12[i1]] == static_cast<int>(i1)) {
-        FeatureMatch match;
-        match.point2D_idx1 = i1;
-        match.point2D_idx2 = matches12[i1];
-        matches->push_back(match);
+        matches->emplace_back(i1, matches12[i1],
+          distances_1to2(i1, matches12[i1]));
+          //(distances_1to2(i1, matches12[i1]) + distances_2to1(matches12[i1], i1)) / 2 );// TODO: is it correct to take the average?
       }
     }
   }
@@ -340,10 +362,7 @@ void VlFeatExtraction::FindBestMatchesFLANN(
     matches->reserve(num_matches12);
     for (size_t i1 = 0; i1 < matches12.size(); ++i1) {
       if (matches12[i1] != -1) {
-        FeatureMatch match;
-        match.point2D_idx1 = i1;
-        match.point2D_idx2 = matches12[i1];
-        matches->push_back(match);
+        matches->emplace_back(i1, matches12[i1], distances_1to2(i1, matches12[i1]));
       }
     }
   }
@@ -356,13 +375,13 @@ void VlFeatExtraction::MatchSiftFeaturesCPUFLANN(const SiftMatchingOptions& matc
   //CHECK(match_options.Check());
   //CHECK_NOTNULL(matches);
 
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+  MatrixXi_RM
     indices_1to2;
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+  MatrixXi_RM
     distances_1to2;
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+  MatrixXi_RM
     indices_2to1;
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+  MatrixXi_RM
     distances_2to1;
 
   FindBestMatchesOneWayFLANN(descriptors1, descriptors2, &indices_1to2,
@@ -385,7 +404,7 @@ void VlFeatExtraction::MatchSiftFeaturesCPU(
   FeatureMatches* matches,
   const bool sort_matches_by_score) {
 
-  return MatchSiftFeaturesCPUFLANN(match_options, descriptors1, descriptors2, matches);
+  MatchSiftFeaturesCPUFLANN(match_options, descriptors1, descriptors2, matches);
 
   // optionally, sort matches by matching score (useful for PROSAC and the like)
   if (sort_matches_by_score) {
@@ -410,13 +429,13 @@ void VlFeatExtraction::MatchGuidedSiftFeaturesCPU(const SiftMatchingOptions& mat
   const Eigen::MatrixXi dists = ComputeSiftDistanceMatrix(
     &keypoints1, &keypoints2, descriptors1, descriptors2, guided_filter);
 
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+  MatrixXi_RM
     indices_1to2(dists.rows(), dists.cols());
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+  MatrixXi_RM
     indices_2to1(dists.cols(), dists.rows());
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+  MatrixXi_RM
     distances_1to2 = dists;
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+  MatrixXi_RM
     distances_2to1 = dists.transpose();
 
   for (int i = 0; i < indices_1to2.rows(); ++i) {

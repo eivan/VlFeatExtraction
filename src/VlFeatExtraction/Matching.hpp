@@ -41,55 +41,22 @@
 
 namespace VlFeatExtraction {
 
-  typedef struct {
+  struct FeatureMatch {
+    FeatureMatch(int point2D_idx1_, int point2D_idx2_, double score_)
+      : point2D_idx1(point2D_idx1_), point2D_idx2(point2D_idx2_), score(score_) {}
+
     int point2D_idx1;
     int point2D_idx2;
     double score;
-  } FeatureMatch;
+  };
 
   typedef std::vector<FeatureMatch> FeatureMatches;
 
-  Eigen::MatrixXi ComputeSiftDistanceMatrix(
-    const FeatureKeypoints* keypoints1, const FeatureKeypoints* keypoints2,
-    const FeatureDescriptors& descriptors1,
-    const FeatureDescriptors& descriptors2,
-    const std::function<bool(float, float, float, float)>& guided_filter);
-
-  size_t FindBestMatchesOneWayBruteForce(const Eigen::MatrixXi& dists,
-    const float max_ratio, const float max_distance,
-    std::vector<int>* matches);
-  void FindBestMatchesBruteForce(const Eigen::MatrixXi& dists, const float max_ratio,
-    const float max_distance, const bool cross_check,
-    FeatureMatches* matches);
   void MatchSiftFeaturesCPUBruteForce(const SiftMatchingOptions& match_options,
     const FeatureDescriptors& descriptors1,
     const FeatureDescriptors& descriptors2,
     FeatureMatches* matches);
 
-  void FindBestMatchesOneWayFLANN(
-    const FeatureDescriptors& query, const FeatureDescriptors& database,
-    Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>*
-    indices,
-    Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>*
-    distances);
-  size_t FindBestMatchesOneWayFLANN(
-    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-    indices,
-    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-    distances,
-    const float max_ratio, const float max_distance,
-    std::vector<int>* matches);
-  void FindBestMatchesFLANN(
-    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-    indices_1to2,
-    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-    distances_1to2,
-    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-    indices_2to1,
-    const Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>&
-    distances_2to1,
-    const float max_ratio, const float max_distance, const bool cross_check,
-    FeatureMatches* matches);
   void MatchSiftFeaturesCPUFLANN(const SiftMatchingOptions& match_options,
     const FeatureDescriptors& descriptors1,
     const FeatureDescriptors& descriptors2,
