@@ -102,11 +102,49 @@ namespace VlFeatExtraction {
     FeatureMatches* matches,
     const bool sort_matches_by_score = true);
 
-  /*void MatchGuidedSiftFeaturesCPU(const SiftMatchingOptions& match_options,
+  /* EXAMPLE (how to determine guided_filter, the last parameter of MatchGuidedSiftFeaturesCPU):
+  const float max_residual = match_options.max_error * match_options.max_error;
+
+  const Eigen::Matrix3f F = two_view_geometry->F.cast<float>();
+  const Eigen::Matrix3f H = two_view_geometry->H.cast<float>();
+
+  std::function<bool(float, float, float, float)> guided_filter;
+  if (two_view_geometry->config == TwoViewGeometry::CALIBRATED ||
+    two_view_geometry->config == TwoViewGeometry::UNCALIBRATED) {
+    guided_filter = [&](const float x1, const float y1, const float x2,
+      const float y2) {
+        const Eigen::Vector3f p1(x1, y1, 1.0f);
+        const Eigen::Vector3f p2(x2, y2, 1.0f);
+        const Eigen::Vector3f Fx1 = F * p1;
+        const Eigen::Vector3f Ftx2 = F.transpose() * p2;
+        const float x2tFx1 = p2.transpose() * Fx1;
+        return x2tFx1 * x2tFx1 /
+          (Fx1(0) * Fx1(0) + Fx1(1) * Fx1(1) + Ftx2(0) * Ftx2(0) +
+            Ftx2(1) * Ftx2(1)) >
+          max_residual;
+    };
+  }
+  else if (two_view_geometry->config == TwoViewGeometry::PLANAR ||
+    two_view_geometry->config == TwoViewGeometry::PANORAMIC ||
+    two_view_geometry->config ==
+    TwoViewGeometry::PLANAR_OR_PANORAMIC) {
+    guided_filter = [&](const float x1, const float y1, const float x2,
+      const float y2) {
+        const Eigen::Vector3f p1(x1, y1, 1.0f);
+        const Eigen::Vector2f p2(x2, y2);
+        return ((H * p1).hnormalized() - p2).squaredNorm() > max_residual;
+    };
+  }
+  else {
+    return;
+  }
+  */
+  void MatchGuidedSiftFeaturesCPU(const SiftMatchingOptions& match_options,
     const FeatureKeypoints& keypoints1,
     const FeatureKeypoints& keypoints2,
     const FeatureDescriptors& descriptors1,
     const FeatureDescriptors& descriptors2,
-    TwoViewGeometry* two_view_geometry);*/
+    const std::function<bool(float/*x1*/, float/*y1*/, float/*x2*/, float/*y2*/)>& guided_filter,
+    FeatureMatches* matches);
 
 }

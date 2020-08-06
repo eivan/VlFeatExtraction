@@ -380,3 +380,40 @@ void VlFeatExtraction::MatchSiftFeaturesCPU(
       });
   }
 }
+
+void VlFeatExtraction::MatchGuidedSiftFeaturesCPU(const SiftMatchingOptions& match_options,
+  const FeatureKeypoints& keypoints1,
+  const FeatureKeypoints& keypoints2,
+  const FeatureDescriptors& descriptors1,
+  const FeatureDescriptors& descriptors2,
+  const std::function<bool(float, float, float, float)>& guided_filter,
+  FeatureMatches* matches) {
+  //CHECK(match_options.Check());
+  //CHECK(guided_filter);
+
+  const Eigen::MatrixXi dists = ComputeSiftDistanceMatrix(
+    &keypoints1, &keypoints2, descriptors1, descriptors2, guided_filter);
+
+  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+    indices_1to2(dists.rows(), dists.cols());
+  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+    indices_2to1(dists.cols(), dists.rows());
+  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+    distances_1to2 = dists;
+  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
+    distances_2to1 = dists.transpose();
+
+  for (int i = 0; i < indices_1to2.rows(); ++i) {
+    indices_1to2.row(i) = Eigen::VectorXi::LinSpaced(indices_1to2.cols(), 0,
+      indices_1to2.cols() - 1);
+  }
+  for (int i = 0; i < indices_2to1.rows(); ++i) {
+    indices_2to1.row(i) = Eigen::VectorXi::LinSpaced(indices_2to1.cols(), 0,
+      indices_2to1.cols() - 1);
+  }
+
+  FindBestMatchesFLANN(indices_1to2, distances_1to2, indices_2to1,
+    distances_2to1, match_options.max_ratio,
+    match_options.max_distance, match_options.cross_check,
+    matches);
+}
