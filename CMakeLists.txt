@@ -24,7 +24,7 @@ if(OPENMP_ENABLED)
 endif()
 
 #find_package( VLFeat REQUIRED )
-find_package( Eigen3 REQUIRED )
+find_package( Eigen3 3.3.7 REQUIRED )
 find_package( OpenCV REQUIRED )
 
 if(OPENMP_ENABLED AND OPENMP_FOUND)

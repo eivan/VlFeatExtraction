@@ -35,3 +35,5 @@ endif()
 
 
 add_subdirectory(VLFeat)
+
+include_directories (BEFORE "nanoflann/include")

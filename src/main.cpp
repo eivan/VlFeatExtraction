@@ -64,9 +64,11 @@ int main(int argc, char** argv) {
 
     // Perform matching
     auto t_start = std::chrono::high_resolution_clock::now();
-    MatchSiftFeaturesCPU(options_m, dsc_left, dsc_right, &matches);
+    //MatchSiftFeaturesCPUBruteForce(options_m, dsc_left, dsc_right, &matches);
+    //MatchSiftFeaturesCPUFLANN(options_m, dsc_left, dsc_right, &matches);
+    MatchSiftFeaturesCPU(options_m, dsc_left, dsc_right, &matches, true); // uses MatchSiftFeaturesCPUFLANN inside
     auto t_end = std::chrono::high_resolution_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::duration<double>>(t_end - t_start).count() << " ";
+    std::cout << "Matching time: "  << std::chrono::duration_cast<std::chrono::duration<double>>(t_end - t_start).count() << std::endl;
 
     std::cout << fkp_left.size() << " " << fkp_right.size() << " " << matches.size() << std::endl;
 
