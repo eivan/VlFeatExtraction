@@ -36,4 +36,4 @@ endif()
 
 add_subdirectory(VLFeat)
 
-include_directories (BEFORE "nanoflann/include")
+include_directories (BEFORE "${CMAKE_CURRENT_SOURCE_DIR}/nanoflann/include")

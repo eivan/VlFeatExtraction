@@ -180,7 +180,7 @@ void VlFeatExtraction::FindBestMatchesBruteForce(const Eigen::MatrixXi& dists, c
       if (matches12[i1] != -1 && matches21[matches12[i1]] != -1 &&
         matches21[matches12[i1]] == static_cast<int>(i1)) {
         matches->emplace_back(i1, matches12[i1],
-          dists(i1, matches12[i1]));
+          dists(i1, 0));
       }
     }
   }
@@ -188,7 +188,7 @@ void VlFeatExtraction::FindBestMatchesBruteForce(const Eigen::MatrixXi& dists, c
     matches->reserve(num_matches12);
     for (size_t i1 = 0; i1 < matches12.size(); ++i1) {
       if (matches12[i1] != -1) {
-        matches->emplace_back(i1, matches12[i1], dists(i1, matches12[i1]));
+        matches->emplace_back(i1, matches12[i1], dists(i1, 0));
       }
     }
   }
@@ -222,9 +222,6 @@ void VlFeatExtraction::FindBestMatchesOneWayFLANN(
   indices,
   MatrixXi_RM*
   distances) {
-
-  std::cout << "rows: " << query.rows() << std::endl;
-  std::cout << "dims: " << query.cols() << std::endl;
 
   constexpr size_t kNumNearestNeighbors = 2;
   constexpr size_t kNumTreesInForest = 4;
@@ -353,7 +350,7 @@ void VlFeatExtraction::FindBestMatchesFLANN(
       if (matches12[i1] != -1 && matches21[matches12[i1]] != -1 &&
         matches21[matches12[i1]] == static_cast<int>(i1)) {
         matches->emplace_back(i1, matches12[i1],
-          distances_1to2(i1, matches12[i1]));
+          distances_1to2(i1, 0));
           //(distances_1to2(i1, matches12[i1]) + distances_2to1(matches12[i1], i1)) / 2 );// TODO: is it correct to take the average?
       }
     }
@@ -362,7 +359,7 @@ void VlFeatExtraction::FindBestMatchesFLANN(
     matches->reserve(num_matches12);
     for (size_t i1 = 0; i1 < matches12.size(); ++i1) {
       if (matches12[i1] != -1) {
-        matches->emplace_back(i1, matches12[i1], distances_1to2(i1, matches12[i1]));
+        matches->emplace_back(i1, matches12[i1], distances_1to2(i1, 0));
       }
     }
   }
