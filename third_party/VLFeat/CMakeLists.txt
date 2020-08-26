@@ -107,4 +107,11 @@ if(NOT OPENMP_ENABLED OR NOT OPENMP_FOUND)
     add_definitions("-DVL_DISABLE_OPENMP")
 endif()
 
+
 add_library(vlfeat ${VLFEAT_SOURCE_FILES})
+
+if (MSVC)
+else()
+  find_package(Threads REQUIRED)
+  target_link_libraries(vlfeat ${CMAKE_THREAD_LIBS_INIT} -lpthread)
+endif()

@@ -72,6 +72,7 @@ target_link_libraries(VlFeatExtraction
 	Eigen3::Eigen 
 	vlfeat
 	${OpenCV_LIBS}
+  OpenMP::OpenMP_CXX
 )
 add_dependencies(VlFeatExtraction 
   vlfeat

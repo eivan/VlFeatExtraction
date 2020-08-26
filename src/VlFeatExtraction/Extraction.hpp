@@ -33,6 +33,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include "Options.hpp"
 #include "Features.hpp"
 #include "Descriptors.hpp"
